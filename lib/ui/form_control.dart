@@ -1,72 +1,84 @@
-import 'package:flutter_survey_js/model/survey.dart' as s;
-import 'package:flutter_survey_js/ui/elements/survey_element_factory.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_survey_js/survey.dart';
+import 'package:flutter_survey_js/ui/validators.dart';
+import 'package:flutter_survey_js_model/flutter_survey_js_model.dart' as s;
 import 'package:reactive_forms/reactive_forms.dart';
 
-import 'validators.dart';
+Object? tryGetValue(String name, Object? value) {
+  if (value == null) return null;
+  if (value is Map<String, Object?>) {
+    return value[name];
+  }
+  return null;
+}
 
 // elementsToFormGroup mapping question json elements to FormGroup
-FormGroup elementsToFormGroup(List<s.ElementBase> elements,
-    {Map<s.ElementBase, Object>? controlsMap,
+// [value] default value passed down by parent
+FormGroup elementsToFormGroup(
+    BuildContext context, List<s.Elementbase> elements,
+    {Map<s.Elementbase, Object>? controlsMap,
     List<ValidatorFunction> validators = const [],
-    List<AsyncValidatorFunction> asyncValidators = const []}) {
+    List<AsyncValidatorFunction> asyncValidators = const [],
+    Object? value}) {
   final Map<String, Object> controls = <String, Object>{};
+  final newValidators = [...validators];
   for (var element in elements) {
-    if (element.name != null) {
-      final obj = element.toFormObject(controlsMap: controlsMap);
+    //the behavior of panel seems different from previous version --2023/04/26 Goxiaoy
+    if (element.name != null && element is! s.Panel) {
+      final obj = toFormObject(context, element,
+          controlsMap: controlsMap, value: tryGetValue(element.name!, value));
       controls[element.name!] = obj;
       if (controlsMap != null) {
         controlsMap[element] = obj;
       }
+    } else {
+      //patch parent
+      final obj = toFormObject(context, element,
+          controlsMap: controlsMap, value: value);
+      if (obj is FormGroup) {
+        controls.addAll(obj.controls);
+      }
+    }
+    if (element is s.Selectbase) {
+      final commentName = "${element.name}-Comment";
+      //always add comment control for selectbase, so that the answer patch will work
+      controls[commentName] = fb.control<String>(
+          "", [if (element.isRequired ?? false) NonEmptyValidator.get]);
     }
   }
-  return fb.group(controls, validators, asyncValidators);
+  return fb.group(controls, newValidators, asyncValidators);
 }
 
-extension ElementExtension on s.ElementBase {
-  // toFormObject convert question json element to FromControl
-  Object toFormObject({Map<s.ElementBase, Object>? controlsMap}) {
-    final formFunc = () {
-      if (this is s.Panel) {
-        final p = this as s.Panel;
-        return elementsToFormGroup(p.elements ?? [],
-            validators: p.isRequired == true ? [Validators.required] : [],
-            controlsMap: controlsMap);
-      }
-      if (this is s.PanelDynamic) {
-        return fb.array((this as s.PanelDynamic).defaultValue ?? []);
-      }
-      if (this is s.MatrixDynamic) {
-        return fb.array((this as s.MatrixDynamic).defaultValue ?? []);
-      }
-      if (this is s.Matrix) {
-        final m = this as s.Matrix;
-        return fb.group(Map.fromEntries((m.rows ?? []).map((e) =>
-            MapEntry(e.value.toString(), FormControl<Object>(value: null)))));
-      }
-      if (this is s.MatrixDropdown) {
-        final m = this as s.MatrixDropdown;
-        return fb.group(Map.fromEntries((m.rows ?? []).map((e) => MapEntry(
-            e.value.toString(),
-            fb.group(Map.fromEntries((m.columns ?? []).map((e) =>
-                MapEntry(e.name!, FormControl<Object>(value: null)))))))));
-      }
-      final validators = <ValidatorFunction>[];
-      if (this is s.Question) {
-        validators.addAll(questionToValidators(this as s.Question));
-      }
-      final c = SurveyElementFactory().resolveFormControl(this);
-
-      final res = c?.call(this, validators: validators) ??
-          FormControl<Object>(
-            validators: validators,
-          );
-      return res;
-    };
-
-    final obj = formFunc();
-    if (controlsMap != null) {
-      controlsMap[this] = obj;
-    }
-    return obj;
+Object? getDefaultValue(s.Elementbase element, Object? value) {
+  if (element is s.Question) {
+    return element.defaultValue?.value ?? value;
   }
+  return value;
+}
+
+// toFormObject convert question json element to FromControl
+// [value] default value passed down by parent
+Object toFormObject(BuildContext context, s.Elementbase element,
+    {Map<s.Elementbase, Object>? controlsMap, Object? value}) {
+  final obj =
+      ((SurveyConfiguration.of(context)?.factory) ?? SurveyElementFactory())
+          .resolveFormControl(context, element, value: value);
+  if (controlsMap != null) {
+    controlsMap[element] = obj;
+  }
+  return obj;
+}
+
+String? getErrorTextFromFormControl<T>(
+    BuildContext context, AbstractControl<T> control) {
+  if (control.touched && control.hasErrors) {
+    final errorKey = control.errors.keys.first;
+    final formConfig = ReactiveFormConfig.of(context);
+
+    final validationMessage = formConfig?.validationMessages[errorKey];
+    return validationMessage != null
+        ? validationMessage(control.getError(errorKey)!)
+        : errorKey;
+  }
+  return null;
 }

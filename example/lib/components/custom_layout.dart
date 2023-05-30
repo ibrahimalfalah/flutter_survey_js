@@ -1,59 +1,65 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_survey_js/survey.dart' as s;
-import 'package:flutter_survey_js/ui/elements/survey_element_factory.dart';
+import 'package:flutter_survey_js/ui/survey_configuration.dart';
 import 'package:flutter_survey_js/ui/survey_widget.dart';
+import 'package:json_editor/json_editor.dart';
 import 'package:logging/logging.dart';
 
 class CustomLayoutPage extends StatelessWidget {
   final s.Survey? survey;
+  final Map<String, Object?>? answer;
 
-  const CustomLayoutPage({Key? key, this.survey}) : super(key: key);
+  const CustomLayoutPage({Key? key, this.survey, this.answer})
+      : super(key: key);
 
   @override
   Widget build(BuildContext context) {
-    return SafeArea(
-        child: Scaffold(
-            appBar: AppBar(
-              title: Text('Survey Customize:' + (survey?.title ?? '')),
-            ),
-            body: survey == null
-                ? Center(
-                    child: CircularProgressIndicator(),
-                  )
-                : s.SurveyWidget(
-                    showQuestionsInOnePage: true,
-                    survey: survey!,
-                    onChange: (v) {
-                      print(v);
-                    },
-                    builder: (context) => CustomLayout(),
-                    onSubmit: (v) {
-                      print(v);
-                      showModalBottomSheet<void>(
-                        context: context,
-                        builder: (BuildContext context) {
-                          return Container(
-                            height: 400,
-                            child: Center(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.stretch,
-                                children: [
-                                  Expanded(
-                                      child: Container(
-                                          child: SingleChildScrollView(
-                                              child: Text(v.toString())))),
-                                  ElevatedButton(
-                                    child: const Text('Close'),
-                                    onPressed: () => Navigator.pop(context),
-                                  )
-                                ],
-                              ),
-                            ),
-                          );
-                        },
+    final survey = this.survey;
+    return Scaffold(
+      appBar: AppBar(
+        title: Text('Survey Customize:' + (survey?.title ?? '')),
+      ),
+      body: SafeArea(
+        child: survey == null
+            ? Center(
+                child: CircularProgressIndicator(),
+              )
+            : s.SurveyWidget(
+                showQuestionsInOnePage: true,
+                survey: survey,
+                answer: answer,
+                onChange: (v) {
+                  print(v);
+                },
+                builder: (context) => CustomLayout(),
+                onSubmit: (v) {
+                  print(v);
+                  showModalBottomSheet<void>(
+                    context: context,
+                    builder: (BuildContext context) {
+                      return Container(
+                        height: 400,
+                        child: Center(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              Expanded(
+                                  child: Container(
+                                      child: JsonEditor.object(object: v))),
+                              ElevatedButton(
+                                child: const Text('Close'),
+                                onPressed: () => Navigator.pop(context),
+                              )
+                            ],
+                          ),
+                        ),
                       );
                     },
-                  )));
+                  );
+                },
+              ),
+      ),
+    );
   }
 }
 
@@ -76,13 +82,13 @@ class CustomLayoutState extends State<CustomLayout> {
 
   @override
   Widget build(BuildContext context) {
-    final pages = _reCalculatePages(
-        SurveyProvider.of(context).showQuestionsInOnePage, survey);
-    assert(pages.length == 1);
-    IndexedWidgetBuilder itemBuilder(s.Page page) {
+    final elements = _consolidateQuestions(survey);
+    IndexedWidgetBuilder itemBuilder(List<s.Elementbase> elements) {
       return (context, index) {
-        if (index < page.elements!.length && index >= 0) {
-          return SurveyElementFactory().resolve(context, page.elements![index]);
+        if (index < elements.length && index >= 0) {
+          return SurveyConfiguration.of(context)!
+              .factory
+              .resolve(context, elements[index]);
         } else {
           return Container(
             width: double.infinity,
@@ -93,7 +99,7 @@ class CustomLayoutState extends State<CustomLayout> {
 
     final IndexedWidgetBuilder separatorBuilder =
         (BuildContext context, int index) {
-      return SurveyElementFactory().separatorBuilder.call(context);
+      return SurveyConfiguration.of(context)!.separatorBuilder.call(context);
     };
     return SingleChildScrollView(
       child: Column(
@@ -102,9 +108,9 @@ class CustomLayoutState extends State<CustomLayout> {
           Flexible(
             fit: FlexFit.loose,
             child: ListView.separated(
-              itemBuilder: itemBuilder(pages[0]),
+              itemBuilder: itemBuilder(elements),
               separatorBuilder: separatorBuilder,
-              itemCount: pages[0].elements?.length ?? 0,
+              itemCount: elements.length,
               physics: NeverScrollableScrollPhysics(),
               shrinkWrap: true,
             ),
@@ -123,15 +129,12 @@ class CustomLayoutState extends State<CustomLayout> {
     );
   }
 
-  List<s.Page> _reCalculatePages(bool showQuestionsInOnePage, s.Survey survey) {
-    var pages = <s.Page>[];
-    pages = [
-      s.Page()
-        ..elements = (survey.pages ?? [])
-            .map<List<s.ElementBase>>((e) => e.elements ?? <s.ElementBase>[])
-            .fold(<s.ElementBase>[],
-                (previousValue, element) => previousValue!..addAll(element))
-    ];
-    return pages;
+  List<s.Elementbase> _consolidateQuestions(s.Survey survey) {
+    return (survey.pages?.toList() ?? [])
+        .map<List<s.Elementbase>>((e) =>
+            e.elementsOrQuestions?.map((p) => p.realElement).toList() ??
+            <s.Elementbase>[])
+        .fold(<s.Elementbase>[],
+            (previousValue, element) => previousValue..addAll(element));
   }
 }

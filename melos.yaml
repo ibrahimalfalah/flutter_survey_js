@@ -1,0 +1,30 @@
+name: flutter_survey_js
+repository: https://github.com/Goxiaoy/flutter_survey_js
+packages:
+  - schema/*
+  - schema/*/*
+  - example/
+  - .
+command:
+  bootstrap:
+    usePubspecOverrides: true
+
+scripts:
+  build:
+    exec: flutter pub run build_runner build --delete-conflicting-outputs
+    packageFilters:
+      dependsOn:
+        - build_runner
+  analyze:
+    exec: flutter analyze --no-fatal-infos
+  test:
+    exec: flutter test
+    packageFilters:
+      dirExists:
+        - test
+  outdated:
+    exec: dart pub outdated
+  upgrade:
+    exec: dart pub upgrade --major-versions
+  fix:
+    exec: dart fix --apply

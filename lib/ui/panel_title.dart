@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_survey_js/model/survey.dart' as s;
+import 'package:flutter_survey_js_model/flutter_survey_js_model.dart' as s;
 
 class PanelTitle extends StatelessWidget {
-  final s.PanelBase panel;
+  final s.Panelbase panel;
   final VoidCallback? onTimeout;
-  const PanelTitle({required this.panel, this.onTimeout});
+
+  const PanelTitle({Key? key, required this.panel, this.onTimeout})
+      : super(key: key);
 
   @override
   Widget build(BuildContext context) {
@@ -12,11 +14,9 @@ class PanelTitle extends StatelessWidget {
       onTap: () {
         // SurveyWidget.of(context).formGroup.vali;
       },
-      child: Container(
-        child: ListTile(
-          title: Text(panel.title ?? panel.name ?? ''),
-          subtitle: panel.description != null ? Text(panel.description!) : null,
-        ),
+      child: ListTile(
+        title: Text(panel.title ?? panel.name ?? ''),
+        subtitle: panel.description != null ? Text(panel.description!) : null,
       ),
     );
   }

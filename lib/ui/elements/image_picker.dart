@@ -1,6 +1,6 @@
 // import 'package:flutter/material.dart';
 // import 'package:flutter_colorpicker/flutter_colorpicker.dart';
-// import 'package:flutter_survey_js/survey.dart' as s;
+// import 'package:flutter_survey_js_model/flutter_survey_js_model.dart' as s;
 // import 'package:reactive_forms/reactive_forms.dart';
 //
 // import 'image.dart';
@@ -8,7 +8,7 @@
 // import 'survey_element_factory.dart';
 //
 // final SurveyElementBuilder imagePickerBuilder =
-//     (context, element, {bool hasTitle = true}) {
+//     (context, element, {ElementConfiguration? configuration}) {
 //   return ImagePickerElement(
 //     formControlName: element.name!,
 //     element: element as s.ImagePicker,

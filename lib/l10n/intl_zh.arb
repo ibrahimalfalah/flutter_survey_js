@@ -3,5 +3,9 @@
   "previousPage": "上一页",
   "submitSurvey": "提交",
   "add": "添加",
-  "remove": "删除"
+  "remove": "删除",
+  "placeholder": "请选择...",
+  "otherItemText": "填写其他答案",
+  "noneItemText": "无",
+  "selectAllText": "全选"
 }

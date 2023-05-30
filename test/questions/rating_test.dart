@@ -2,10 +2,7 @@ import 'dart:core';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_survey_js/survey.dart';
-import 'package:flutter_survey_js/survey.dart' as s;
 import 'package:flutter_test/flutter_test.dart';
-
-import '../test_data.dart';
 
 void main() {
   // 单一的测试
@@ -21,35 +18,43 @@ void main() {
     ]
   };
   test("Serialize Deserialize Survey", () {
-    final s = Survey.fromJson(json);
+    final s = surveyFromJson(json);
   });
 
   group('ratingBuilder', () {
     testWidgets(
       'reflects non-null default values',
       (widgetTester) async {
-        final int defaultValue = 3;
-        final String elementName = 'some rating';
+        const int defaultValue = 3;
+        const String elementName = 'some rating';
         await widgetTester.pumpWidget(
           MaterialApp(
-            localizationsDelegates: [
-              s.MultiAppLocalizationsDelegate(),
+            localizationsDelegates: const [
+              MultiAppLocalizationsDelegate(),
             ],
             home: Material(
               child: SurveyWidget(
-                survey: TestData.survey(questions: [
-                  Rating()
-                    ..defaultValue = defaultValue
-                    ..name = elementName
-                ]),
+                survey: surveyFromJson({
+                  "pages": [
+                    {
+                      "elements": [
+                        {
+                          "type": "rating",
+                          "defaultValue": defaultValue,
+                          "name": elementName
+                        }
+                      ]
+                    }
+                  ]
+                })!,
               ),
             ),
           ),
         );
         await widgetTester.pump();
         await widgetTester.idle();
-        final s.SurveyProvider surveyProvider = widgetTester
-            .widget(find.byType(SurveyProvider)) as s.SurveyProvider;
+        final SurveyProvider surveyProvider =
+            widgetTester.widget(find.byType(SurveyProvider)) as SurveyProvider;
         expect(surveyProvider.formGroup.value, {elementName: defaultValue});
       },
     );
@@ -57,24 +62,31 @@ void main() {
     testWidgets(
       'reflects null default values',
       (widgetTester) async {
-        final String elementName = 'some rating';
+        const String elementName = 'some rating';
         await widgetTester.pumpWidget(
           MaterialApp(
-            localizationsDelegates: [
-              s.MultiAppLocalizationsDelegate(),
+            localizationsDelegates: const [
+              MultiAppLocalizationsDelegate(),
             ],
             home: Material(
               child: SurveyWidget(
-                survey:
-                    TestData.survey(questions: [Rating()..name = elementName]),
+                survey: surveyFromJson({
+                  "pages": [
+                    {
+                      "elements": [
+                        {"type": "rating", "name": elementName}
+                      ]
+                    }
+                  ]
+                })!,
               ),
             ),
           ),
         );
         await widgetTester.pump();
         await widgetTester.idle();
-        final s.SurveyProvider surveyProvider = widgetTester
-            .widget(find.byType(SurveyProvider)) as s.SurveyProvider;
+        final surveyProvider =
+            widgetTester.widget(find.byType(SurveyProvider)) as SurveyProvider;
         expect(surveyProvider.formGroup.value, {elementName: null});
       },
     );

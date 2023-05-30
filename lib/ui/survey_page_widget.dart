@@ -1,10 +1,10 @@
 import 'dart:math';
 
 import 'package:flutter/material.dart';
-import 'package:flutter_survey_js/model/survey.dart' as s;
+import 'package:flutter_survey_js/ui/survey_configuration.dart';
+import 'package:flutter_survey_js_model/flutter_survey_js_model.dart' as s;
 import 'package:scrollable_positioned_list/scrollable_positioned_list.dart';
 
-import 'elements/survey_element_factory.dart';
 import 'panel_title.dart';
 
 class SurveyPageWidget extends StatefulWidget {
@@ -16,6 +16,7 @@ class SurveyPageWidget extends StatefulWidget {
     required this.page,
     this.initIndex = 0,
   }) : super(key: key);
+
   @override
   State<StatefulWidget> createState() => SurveyPageWidgetState();
 
@@ -30,29 +31,36 @@ class SurveyPageWidgetState extends State<SurveyPageWidget> {
       ItemPositionsListener.create();
   bool _showBackToTopButton = false;
   late int maxIndex;
+
   @override
   void initState() {
     super.initState();
 
-    maxIndex = widget.page.elements?.length ?? 0;
+    maxIndex = widget.page.elementsOrQuestions?.length ?? 0;
     itemPositionsListener.itemPositions.addListener(() {
       final v = itemPositionsListener.itemPositions.value
           .where((element) => element.index == 0)
           .toList();
-      if (v.length > 0) {
+      if (v.isNotEmpty) {
         if (v.first.itemLeadingEdge < 0) {
+          if (_showBackToTopButton != true) {
+            setState(() {
+              _showBackToTopButton = true;
+            });
+          }
+        } else {
+          if (_showBackToTopButton != false) {
+            setState(() {
+              _showBackToTopButton = false;
+            });
+          }
+        }
+      } else {
+        if (_showBackToTopButton != true) {
           setState(() {
             _showBackToTopButton = true;
           });
-        } else {
-          setState(() {
-            _showBackToTopButton = false;
-          });
         }
-      } else {
-        setState(() {
-          _showBackToTopButton = true;
-        });
       }
     });
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -80,7 +88,7 @@ class SurveyPageWidgetState extends State<SurveyPageWidget> {
     return Scaffold(
         floatingActionButton: _showBackToTopButton == false
             ? null
-            : Container(
+            : SizedBox(
                 height: 45.0,
                 width: 45.0,
                 child: FittedBox(
@@ -88,7 +96,7 @@ class SurveyPageWidgetState extends State<SurveyPageWidget> {
                     onPressed: () {
                       itemScrollController.jumpTo(index: 0);
                     },
-                    child: Icon(
+                    child: const Icon(
                       Icons.arrow_upward,
                     ),
                   ),
@@ -103,7 +111,7 @@ class SurveyPageWidgetState extends State<SurveyPageWidget> {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.start,
               children: <Widget>[
-                SizedBox(
+                const SizedBox(
                   height: 8.0,
                 ),
                 if (widget.page.title != null ||
@@ -119,14 +127,17 @@ class SurveyPageWidgetState extends State<SurveyPageWidget> {
                   ),
                 Expanded(
                   child: ScrollablePositionedList.separated(
-                    physics: ClampingScrollPhysics(),
+                    physics: const ClampingScrollPhysics(),
                     itemCount: maxIndex,
                     itemScrollController: itemScrollController,
                     itemPositionsListener: itemPositionsListener,
                     itemBuilder: (context, index) {
-                      if (index < widget.page.elements!.length && index >= 0) {
-                        return SurveyElementFactory()
-                            .resolve(context, widget.page.elements![index]);
+                      if (index < widget.page.elementsOrQuestions!.length &&
+                          index >= 0) {
+                        return SurveyConfiguration.of(context)!.factory.resolve(
+                            context,
+                            widget
+                                .page.elementsOrQuestions![index].realElement);
                       } else {
                         return Container(
                           width: double.infinity,
@@ -138,13 +149,12 @@ class SurveyPageWidgetState extends State<SurveyPageWidget> {
                       }
                     },
                     separatorBuilder: (BuildContext context, int index) {
-                      return SurveyElementFactory()
-                          .separatorBuilder
-                          .call(context);
+                      return SurveyConfiguration.of(context)!
+                          .separatorBuilder(context);
                     },
                   ),
                 ),
-                SizedBox(
+                const SizedBox(
                   height: 45,
                 ) //: Container()
               ],

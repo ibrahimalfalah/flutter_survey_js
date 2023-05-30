@@ -7,24 +7,28 @@ All these widgets and highly depend on [reactive_forms](https://pub.dev/packages
 Live preview [https://goxiaoy.github.io/flutter_survey_js/](https://goxiaoy.github.io/flutter_survey_js/)
 
 # IMPORTANT_NOTE
+
 # This package has not fully tested, use at your own risk
 
-
 Supported widgets:
+
+- [x] checkbox
+- [ ] tagbox
+- [x] ranking
+- [x] radiogroup
+- [ ] imagepicker
+- [ ] buttongroup
+- [x] dropdown
 - [x] matrixdropdown
 - [x] matrixdynamic
 - [x] matrix
 - [ ] expression
-- [x] checkbox
-- [x] ranking
-- [x] radiogroup
-- [ ] imagepicker
-- [x] dropdown
 - [x] text
+- [x] comment
 - [x] multipletext
 - [x] html
 - [x] image
-- [x] comment
+- [ ] empty
 - [ ] file
 - [x] rating
 - [x] boolean
@@ -33,6 +37,7 @@ Supported widgets:
 - [x] panel
 
 Supported validator:
+
 - [x] numericvalidator
 - [x] textvalidator
 - [ ] answercountvalidator
@@ -58,7 +63,7 @@ const survey = {
 };
 ...
 s.SurveyWidget(
-  survey: s.Survey.fromJson(survey),
+  survey: s.surveyFromJson(survey),
   onChange: (v) {
     print(v);
   },
@@ -70,3 +75,33 @@ s.SurveyWidget(
 
 ```
 
+## Customize
+```dart
+s.SurveyConfiguration(
+  unsupportedBuilder: ...,
+  ...
+  child: s.SurveyWidget(
+    survey: s.surveyFromJson(survey),
+    onChange: (v) {
+      print(v);
+    },
+    onSubmit: (v) {
+      print(v);
+    },
+  )
+)
+
+
+```
+
+# Development
+## Melos
+
+Install
+```shell
+dart pub global activate melos
+```
+
+```bootstrap
+dart pub global run melos bs
+```

@@ -2,10 +2,7 @@ import 'dart:core';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_survey_js/survey.dart';
-import 'package:flutter_survey_js/survey.dart' as s;
 import 'package:flutter_test/flutter_test.dart';
-
-import '../test_data.dart';
 
 main() {
   group('SurveyController', () {
@@ -15,20 +12,21 @@ main() {
         int onSubmitCallCount = 0;
         await widgetTester.pumpWidget(
           MaterialApp(
-            localizationsDelegates: [
-              s.MultiAppLocalizationsDelegate(),
+            localizationsDelegates: const [
+              MultiAppLocalizationsDelegate(),
             ],
             home: Material(
               child: SurveyWidget(
-                survey: TestData.survey(
-                  pages: [
-                    TestData.page(
-                      elements: [
-                        s.Text(),
-                      ],
-                    ),
-                  ],
-                ),
+                survey: surveyFromJson({
+                  "questions": [
+                    {
+                      "name": "name",
+                      "type": "text",
+                      "state": "expanded",
+                      "title": "Please enter your name:"
+                    },
+                  ]
+                })!,
                 controller: controller,
                 onSubmit: (_) => onSubmitCallCount++,
               ),

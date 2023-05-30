@@ -2,39 +2,40 @@ import 'dart:async';
 import 'dart:math';
 
 import 'package:flutter/material.dart';
-import 'package:flutter_survey_js/model/survey.dart' as s;
 import 'package:flutter_survey_js/survey.dart';
+import 'package:flutter_survey_js_model/flutter_survey_js_model.dart' as s;
 import 'package:logging/logging.dart';
 import 'package:reactive_forms/reactive_forms.dart';
 
 import 'elements_state.dart';
 import 'form_control.dart';
 
-final defaultBuilder = (BuildContext context) {
-  return SurveyLayout();
-};
-
-typedef SurveyBuilder = Widget Function(BuildContext context);
+Widget defaultBuilder(BuildContext context) {
+  return const SurveyLayout();
+}
 
 class SurveyWidget extends StatefulWidget {
   final s.Survey survey;
   final Map<String, Object?>? answer;
   final FutureOr<void> Function(dynamic data)? onSubmit;
+  final FutureOr<void> Function(dynamic data)? onErrors;
   final ValueSetter<Map<String, Object?>?>? onChange;
   final bool showQuestionsInOnePage;
   final SurveyController? controller;
-  final SurveyBuilder? builder;
+  final WidgetBuilder? builder;
 
   const SurveyWidget({
     Key? key,
     required this.survey,
     this.answer,
     this.onSubmit,
+    this.onErrors,
     this.onChange,
     this.controller,
     this.builder,
     this.showQuestionsInOnePage = false,
   }) : super(key: key);
+
   @override
   State<StatefulWidget> createState() => SurveyWidgetState();
 }
@@ -42,7 +43,7 @@ class SurveyWidget extends StatefulWidget {
 class SurveyWidgetState extends State<SurveyWidget> {
   final Logger logger = Logger('SurveyWidgetState');
   late FormGroup formGroup;
-  late Map<s.ElementBase, Object> _controlsMap;
+  late Map<s.Elementbase, Object> _controlsMap;
 
   late int pageCount;
 
@@ -77,7 +78,7 @@ class SurveyWidgetState extends State<SurveyWidget> {
   Widget build(BuildContext context) {
     //TODO recalculate page count and visible
     //TODO calculate status
-    Map<s.ElementBase, ElementStatus> status = {};
+    Map<s.Elementbase, ElementStatus> status = {};
     int index = 0;
     for (final kv in _controlsMap.entries) {
       var visible = true;
@@ -88,26 +89,28 @@ class SurveyWidgetState extends State<SurveyWidget> {
     }
     final elementsState = ElementsState(status);
 
-    return ReactiveForm(
-      formGroup: this.formGroup,
-      child: StreamBuilder(
-        stream: this.formGroup.valueChanges,
-        builder: (BuildContext context,
-            AsyncSnapshot<Map<String, Object?>?> snapshot) {
-          return SurveyProvider(
-            survey: widget.survey,
-            formGroup: formGroup,
-            elementsState: elementsState,
-            currentPage: currentPage,
-            initialPage: initialPage,
-            showQuestionsInOnePage: widget.showQuestionsInOnePage,
-            child: Builder(
-                builder: (context) =>
-                    (widget.builder ?? defaultBuilder)(context)),
-          );
-        },
-      ),
-    );
+    return SurveyConfiguration.copyAncestor(
+        context: context,
+        child: ReactiveForm(
+          formGroup: formGroup,
+          child: StreamBuilder(
+            stream: formGroup.valueChanges,
+            builder: (BuildContext context,
+                AsyncSnapshot<Map<String, Object?>?> snapshot) {
+              return SurveyProvider(
+                survey: widget.survey,
+                formGroup: formGroup,
+                elementsState: elementsState,
+                currentPage: currentPage,
+                initialPage: initialPage,
+                showQuestionsInOnePage: widget.showQuestionsInOnePage,
+                child: Builder(
+                    builder: (context) =>
+                        (widget.builder ?? defaultBuilder)(context)),
+              );
+            },
+          ),
+        ));
   }
 
   void rebuildForm() {
@@ -117,12 +120,14 @@ class SurveyWidgetState extends State<SurveyWidget> {
     _controlsMap = {};
     _currentPage = 0;
 
-    this.formGroup = elementsToFormGroup(widget.survey.getElements(),
+    formGroup = elementsToFormGroup(context, widget.survey.getElements(),
         controlsMap: _controlsMap);
 
-    formGroup.patchValue(widget.answer, updateParent: true);
+    if (widget.answer != null) {
+      formGroup.patchValue(widget.answer);
+    }
 
-    _listener = this.formGroup.valueChanges.listen((event) {
+    _listener = formGroup.valueChanges.listen((event) {
       logger.fine('Value changed $event');
       widget.onChange?.call(event);
     });
@@ -137,10 +142,12 @@ class SurveyWidgetState extends State<SurveyWidget> {
     if (formGroup.valid) {
       widget.onSubmit?.call(formGroup.value);
     } else {
+      widget.onErrors?.call(formGroup.errors);
       formGroup.markAllAsTouched();
     }
   }
 
+  @override
   void dispose() {
     _listener?.cancel();
     widget.controller?._detach();
@@ -168,7 +175,6 @@ class SurveyWidgetState extends State<SurveyWidget> {
 }
 
 class SurveyProvider extends InheritedWidget {
-  final Widget child;
   final s.Survey survey;
   final FormGroup formGroup;
   final ElementsState elementsState;
@@ -176,15 +182,16 @@ class SurveyProvider extends InheritedWidget {
   final int initialPage;
   final bool showQuestionsInOnePage;
 
-  SurveyProvider({
+  const SurveyProvider({
+    Key? key,
     required this.elementsState,
-    required this.child,
+    required Widget child,
     required this.survey,
     required this.formGroup,
     required this.currentPage,
     required this.initialPage,
     this.showQuestionsInOnePage = false,
-  }) : super(child: child);
+  }) : super(key: key, child: child);
 
   static SurveyProvider of(BuildContext context) {
     return context.dependOnInheritedWidgetOfExactType<SurveyProvider>()!;
@@ -195,12 +202,12 @@ class SurveyProvider extends InheritedWidget {
 }
 
 extension SurveyFormExtension on s.Survey {
-  List<s.ElementBase> getElements() {
-    return questions ??
-        pages!.fold<List<s.ElementBase>>(
-            [],
-            (previousValue, element) =>
-                previousValue..addAll(element.elements ?? []));
+  List<s.Elementbase> getElements() {
+    return pages!.fold<List<s.Elementbase>>(
+        [],
+        (previousValue, element) => previousValue
+          ..addAll(
+              element.elementsOrQuestions?.map((p) => p.realElement) ?? []));
   }
 }
 
@@ -252,6 +259,6 @@ class SurveyController {
 
 extension SurveyExtension on s.Survey {
   int getPageCount() {
-    return this.questions == null ? (this.pages ?? []).length : 1;
+    return (pages?.toList() ?? []).length;
   }
 }

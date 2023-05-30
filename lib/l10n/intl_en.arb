@@ -3,5 +3,9 @@
   "previousPage": "PreviousPage",
   "submitSurvey": "Submit",
   "add": "Add",
-  "remove": "Remove"
+  "remove": "Remove",
+  "placeholder": "Select...",
+  "otherItemText": "Other (describe)",
+  "noneItemText": "None",
+  "selectAllText": "Select All"
 }

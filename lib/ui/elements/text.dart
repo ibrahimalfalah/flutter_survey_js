@@ -1,92 +1,104 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_survey_js/model/survey.dart' as s;
 import 'package:flutter_survey_js/ui/reactive/reactive.dart';
 import 'package:flutter_survey_js/ui/reactive/reactive_color_picker.dart';
+import 'package:flutter_survey_js/ui/survey_configuration.dart';
+import 'package:flutter_survey_js_model/flutter_survey_js_model.dart' as s;
 import 'package:reactive_date_time_picker/reactive_date_time_picker.dart';
 import 'package:reactive_forms/reactive_forms.dart';
 
-import 'question_title.dart';
-import 'survey_element_factory.dart';
-
-final SurveyElementBuilder textBuilder =
-    (context, element, {bool hasTitle = true}) {
+Widget textBuilder(BuildContext context, s.Elementbase element,
+    {ElementConfiguration? configuration}) {
   final e = element as s.Text;
+  final String? hintText = e.placeholder;
   Widget widget = ReactiveTextField(
     formControlName: element.name!,
+    decoration: InputDecoration(hintText: hintText),
   );
 
-  if (e.inputType == 'date') {
+  if (e.inputType == s.TextInputType.date) {
     widget = ReactiveDateTimePicker(
-        locale: Localizations.localeOf(context),
-        formControlName: element.name!,
-        type: ReactiveDatePickerFieldType.date);
-  }
-  if (e.inputType == 'color') {
-    widget = ReactiveColorPicker(formControlName: element.name!);
-  }
-  if (e.inputType == 'email') {
-    widget = ReactiveTextField(
+      locale: Localizations.localeOf(context),
       formControlName: element.name!,
+      type: ReactiveDatePickerFieldType.date,
+      decoration: InputDecoration(hintText: hintText),
     );
   }
-  if (e.inputType == 'datetime') {
-    widget = ReactiveDateTimePicker(
-        locale: Localizations.localeOf(context),
-        formControlName: element.name!,
-        type: ReactiveDatePickerFieldType.dateTime);
+  if (e.inputType == s.TextInputType.color) {
+    widget = ReactiveColorPicker(formControlName: element.name!);
   }
-  if (e.inputType == 'datetime-local') {
-    widget = ReactiveDateTimePicker(
-        locale: Localizations.localeOf(context),
-        formControlName: element.name!,
-        type: ReactiveDatePickerFieldType.dateTime);
+  if (e.inputType == s.TextInputType.email) {
+    widget = ReactiveTextField(
+      formControlName: element.name!,
+      decoration: InputDecoration(hintText: hintText),
+    );
   }
-  if (e.inputType == 'month') {
+  if (e.inputType == s.TextInputType.datetimeLocal) {
+    widget = ReactiveDateTimePicker(
+      locale: Localizations.localeOf(context),
+      formControlName: element.name!,
+      type: ReactiveDatePickerFieldType.dateTime,
+      decoration: InputDecoration(hintText: hintText),
+    );
+  }
+
+  if (e.inputType == s.TextInputType.month) {
     //TODO
   }
-  if (e.inputType == 'password') {
+  if (e.inputType == s.TextInputType.password) {
     widget = ReactiveTextField(
       obscureText: true,
       formControlName: element.name!,
+      decoration: InputDecoration(hintText: hintText),
     );
   }
-  if (e.inputType == 'range') {}
-  if (e.inputType == 'tel') {
+  if (e.inputType == s.TextInputType.range) {}
+  if (e.inputType == s.TextInputType.tel) {
     widget = ReactiveTextField(
       keyboardType: TextInputType.phone,
       formControlName: element.name!,
+      decoration: InputDecoration(hintText: hintText),
     );
   }
-  if (e.inputType == 'time') {}
-  if (e.inputType == 'url') {}
-  if (e.inputType == 'week') {}
-  if (e.inputType == 'number') {
+  if (e.inputType == s.TextInputType.time) {}
+  if (e.inputType == s.TextInputType.url) {}
+  if (e.inputType == s.TextInputType.week) {}
+  if (e.inputType == s.TextInputType.number) {
     widget = ReactiveTextField(
       keyboardType: TextInputType.number,
       formControlName: element.name!,
       valueAccessor: NumStringValueAccessor(),
+      decoration: InputDecoration(hintText: hintText),
     );
   }
-  return widget.wrapQuestionTitle(element, hasTitle: hasTitle);
-};
+  return widget.wrapQuestionTitle(context, element,
+      configuration: configuration);
+}
 
-final SurveyFormControlBuilder textControlBuilder =
-    (s.ElementBase element, {validators = const <ValidatorFunction>[]}) {
+AbstractControl textControlBuilder(BuildContext context, s.Elementbase element,
+    {validators = const <ValidatorFunction>[], Object? value}) {
   final e = element as s.Text;
-  if (e.inputType == 'date' ||
-      e.inputType == 'datetime' ||
-      e.inputType == 'datetime-local') {
-    return FormControl<DateTime>(validators: validators);
+  if (e.inputType == s.TextInputType.date ||
+      e.inputType == s.TextInputType.datetimeLocal) {
+    return FormControl<DateTime>(
+        validators: validators,
+        value: e.defaultValue.tryCastToDateTime() ?? value.tryCastToDateTime());
   }
-  if (e.inputType == 'color') {
-    return FormControl<String>(validators: validators);
+  if (e.inputType == s.TextInputType.color) {
+    return FormControl<String>(
+        validators: validators,
+        value: e.defaultValue.tryCastToString() ?? value.tryCastToString());
   }
-  if (e.inputType == 'email') {
-    return FormControl<String>(validators: [...validators, Validators.email]);
+  if (e.inputType == s.TextInputType.email) {
+    return FormControl<String>(
+        validators: [...validators, Validators.email],
+        value: e.defaultValue.tryCastToString() ?? value.tryCastToString());
   }
-  if (e.inputType == 'number') {
+  if (e.inputType == s.TextInputType.number) {
     return FormControl<num>(
-        validators: [...validators, NullableNumberValidator().validate]);
+        validators: [...validators, NullableNumberValidator().validate],
+        value: e.defaultValue.tryCastToNum() ?? value.tryCastToNum());
   }
-  return FormControl<String>(validators: validators);
-};
+  return FormControl<String>(
+      validators: validators,
+      value: e.defaultValue.tryCastToString() ?? value.tryCastToString());
+}

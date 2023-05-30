@@ -99,6 +99,46 @@ class S {
       args: [],
     );
   }
+
+  /// `Select...`
+  String get placeholder {
+    return Intl.message(
+      'Select...',
+      name: 'placeholder',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Other (describe)`
+  String get otherItemText {
+    return Intl.message(
+      'Other (describe)',
+      name: 'otherItemText',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `None`
+  String get noneItemText {
+    return Intl.message(
+      'None',
+      name: 'noneItemText',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Select All`
+  String get selectAllText {
+    return Intl.message(
+      'Select All',
+      name: 'selectAllText',
+      desc: '',
+      args: [],
+    );
+  }
 }
 
 class AppLocalizationDelegate extends LocalizationsDelegate<S> {

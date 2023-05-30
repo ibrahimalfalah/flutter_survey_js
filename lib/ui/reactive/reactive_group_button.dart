@@ -1,19 +1,28 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_survey_js/model/survey.dart' as s;
 import 'package:group_button/group_button.dart';
 import 'package:reactive_forms/reactive_forms.dart';
+
+class ReactiveGroupButtonItem {
+  final String title;
+  final Object? value;
+
+  ReactiveGroupButtonItem({required this.title, required this.value});
+}
 
 // ReactiveGroupButton Wrapper around group_button to use with reactive_forms
 class ReactiveGroupButton extends ReactiveFocusableFormField<dynamic, dynamic> {
   final GroupButtonController? _controller;
-  final List<s.ItemValue> _buttons;
+  final List<ReactiveGroupButtonItem> _buttons;
+
+  List<ReactiveGroupButtonItem> get items => List.unmodifiable(_buttons);
+
   ReactiveGroupButton({
     Key? key,
     String? formControlName,
     FormControl<dynamic>? formControl,
     Map<String, ValidationMessageFunction>? validationMessages,
     InputDecoration? decoration,
-    required List<s.ItemValue> buttons,
+    required List<ReactiveGroupButtonItem> buttons,
     GroupButtonController? controller,
     GroupButtonOptions options = const GroupButtonOptions(),
     bool isRadio = true,
@@ -39,7 +48,7 @@ class ReactiveGroupButton extends ReactiveFocusableFormField<dynamic, dynamic> {
                     errorText: field.errorText,
                     enabled: field.control.enabled,
                   ),
-                  child: GroupButton<s.ItemValue>(
+                  child: GroupButton<ReactiveGroupButtonItem>(
                     buttons: buttons,
                     options: options,
                     isRadio: isRadio,
@@ -50,12 +59,14 @@ class ReactiveGroupButton extends ReactiveFocusableFormField<dynamic, dynamic> {
                       BuildContext context,
                     ) {
                       final choice = buttons[index];
-                      final title =
-                          choice.text ?? choice.value?.toString() ?? '';
+                      final itemValue = choice.value;
+                      final title = choice.title;
                       return RadioListTile<int>(
                         title: Text(title),
                         groupValue: state._controller.selectedIndex,
                         value: index,
+                        contentPadding:
+                            const EdgeInsets.only(left: 8.0, right: 16.0),
                         onChanged: (_) {
                           if (!selected) {
                             state._controller.selectIndex(index);
@@ -64,7 +75,7 @@ class ReactiveGroupButton extends ReactiveFocusableFormField<dynamic, dynamic> {
                           }
                           if (field.control.enabled) {
                             if (!selected) {
-                              field.didChange(choice.value);
+                              field.didChange(itemValue);
                             } else {
                               field.didChange(null);
                             }
@@ -99,8 +110,8 @@ class _ReactiveGroupButtonState<T>
     _controller = (currentWidget._controller != null)
         ? currentWidget._controller!
         : GroupButtonController();
-    final index =
-        currentWidget._buttons.indexWhere((element) => element == initialValue);
+    final index = currentWidget._buttons
+        .indexWhere((element) => element.value == initialValue);
     if (index != -1) {
       _controller.selectIndex(index);
     }

@@ -1,6 +1,7 @@
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_survey_js/generated/l10n.dart';
+import 'package:flutter_survey_js/ui/form_control.dart';
+import 'package:flutter_survey_js/ui/reactive/reactive_wrap_form_array.dart';
 import 'package:reactive_forms/reactive_forms.dart';
 
 typedef ReactiveNestedGroupArrayBuilder = Widget Function(
@@ -11,11 +12,12 @@ class ReactiveNestedGroupArray<T> extends StatelessWidget {
   final FormArray<T>? formArray;
   final Widget? child;
   final ReactiveNestedGroupArrayBuilder builder;
-  final FormGroup Function()? createNew;
+  final AbstractControl<T> Function()? createNew;
   final int minLength;
   final int? maxLength;
 
-  ReactiveNestedGroupArray({
+  const ReactiveNestedGroupArray({
+    Key? key,
     InputDecoration decoration = const InputDecoration(),
     this.formArrayName,
     this.formArray,
@@ -24,11 +26,23 @@ class ReactiveNestedGroupArray<T> extends StatelessWidget {
     this.createNew,
     this.minLength = 0,
     this.maxLength,
-  }) : assert(minLength >= 0);
+  })  : assert(minLength >= 0),
+        super(key: key);
 
   @override
   Widget build(BuildContext context) {
-    return ReactiveFormArray(
+    return ReactiveWrapFormArray(
+      wrapper:
+          (BuildContext context, FormArray<Object?> formArray, Widget child) {
+        final effectiveDecoration = const InputDecoration()
+            .applyDefaults(Theme.of(context).inputDecorationTheme);
+
+        return InputDecorator(
+          decoration: effectiveDecoration.copyWith(
+              errorText: getErrorTextFromFormControl(context, formArray)),
+          child: child,
+        );
+      },
       formArrayName: formArrayName,
       formArray: formArray,
       child: child,
@@ -46,7 +60,7 @@ class ReactiveNestedGroupArray<T> extends StatelessWidget {
               children: [
                 //build
                 Padding(
-                  padding: EdgeInsets.only(
+                  padding: const EdgeInsets.only(
                       top: 12.5, right: 12.5, left: 8, bottom: 8),
                   child: builder(context, form, child),
                 ),
@@ -78,7 +92,7 @@ class ReactiveNestedGroupArray<T> extends StatelessWidget {
           if (createNew != null &&
               (maxLength == null || formArray.controls.length < maxLength!))
             Padding(
-              padding: EdgeInsets.all(5),
+              padding: const EdgeInsets.all(5),
               child: ElevatedButton(
                 onPressed: () {
                   formArray.add(createNew!());

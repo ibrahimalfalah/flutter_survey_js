@@ -1,4 +1,5 @@
-import 'package:flutter_survey_js/model/survey.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_survey_js/survey.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
@@ -96,6 +97,31 @@ void main() {
     ]
   };
   test("Serialize Deserialize Survey", () {
-    final s = Survey.fromJson(json);
+    final s = surveyFromJson(json);
+  });
+
+  testWidgets('displays placeholder', (WidgetTester tester) async {
+    const placeholder = 'Enter some text here...';
+    final s = surveyFromJson(
+      {
+        "questions": [
+          {"name": "name", "type": "text", "placeholder": placeholder},
+        ],
+      },
+    )!;
+    await tester.pumpWidget(
+      MaterialApp(
+        localizationsDelegates: const [
+          MultiAppLocalizationsDelegate(),
+        ],
+        home: Material(
+          child: SurveyWidget(survey: s),
+        ),
+      ),
+    );
+    await tester.pump();
+    await tester.idle();
+
+    expect(find.text(placeholder), findsOneWidget);
   });
 }

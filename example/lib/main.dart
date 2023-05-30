@@ -8,8 +8,7 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_survey_js/survey.dart' as s;
 import 'package:json_editor/json_editor.dart';
 
-import 'components/custom_layout.dart';
-import 'components/simple.dart';
+import 'answer.dart';
 
 void main() {
   runApp(
@@ -67,108 +66,127 @@ class MyHomePage extends StatefulWidget {
 class _MyHomePageState extends State<MyHomePage> {
   String survey = "";
 
-  late Future<List<Null>> assetLoader;
-  Map<String, String> _surveyMap = {};
+  late Future<List> assetLoader;
+  Map<TestJsonType, String> _surveyMap = {};
+
+  TestJsonType? selected;
 
   @override
   void initState() {
-    assetLoader = Future.wait([
-      rootBundle.loadString('assets/complex.json').then((value) {
-        _surveyMap["Complex"] = JsonElement.format(value);
-        //set default as multi page
-        setState(() {
-          survey = value;
-        });
-      }),
-      rootBundle.loadString('assets/single_page.json').then((value) {
-        _surveyMap["Single Page"] = JsonElement.format(value);
-      }),
-    ]);
+    assetLoader = Future.wait(
+      TestJsonType.values.map((e) => rootBundle
+          .loadString(e.fileLocation)
+          .then((value) => _surveyMap[e] = JsonElement.format(value))),
+    ).then((value) {
+      setState(() {
+        selected = TestJsonType.complex;
+        survey = _surveyMap[selected!]!;
+      });
+      return value;
+    });
     super.initState();
   }
 
   @override
   Widget build(BuildContext context) {
-    return SafeArea(
-        child: Scaffold(
-            appBar: AppBar(
-              title: Text('Survey complete json test'),
-            ),
-            body: FutureBuilder(
-              future: this.assetLoader,
-              builder:
-                  (BuildContext context, AsyncSnapshot<List<Null>> snapshot) {
-                if (!snapshot.hasData) {
-                  return CircularProgressIndicator();
-                }
-                return Column(children: [
-                  Wrap(
-                    direction: Axis.horizontal,
-                    children: [
-                      ElevatedButton(
-                        onPressed: () => {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                                builder: (context) => Simple(
-                                      survey: toSurvey(survey),
-                                    )),
-                          )
-                        },
-                        child: Text(
-                          'Simple',
-                        ),
-                      ),
-                      ElevatedButton(
-                        onPressed: () => {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                                builder: (context) => CustomLayoutPage(
-                                      survey: toSurvey(survey),
-                                    )),
-                          )
-                        },
-                        child: Text(
-                          'Customize',
-                        ),
-                      ),
-                    ],
-                  ),
-                  Divider(),
-                  Wrap(
-                    direction: Axis.horizontal,
-                    children: _surveyMap.entries.map((p) {
-                      return ElevatedButton(
-                        onPressed: () {
-                          setState(() {
-                            survey = p.value;
-                          });
-                        },
-                        child: Text(
-                          p.key,
-                        ),
-                      );
-                    }).toList(),
-                  ),
-                  Expanded(
-                      child: JsonEditor.string(
-                    jsonString: survey,
-                    onValueChanged: (value) {
-                      if (value.toString() != survey && mounted) {
-                        setState(() {
-                          survey = value.toString();
-                        });
-                      }
-                    },
-                  ))
-                ]);
+    return Scaffold(
+        appBar: AppBar(
+          title: Text('Survey json test'),
+          actions: [
+            ElevatedButton(
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                      builder: (context) => AnswerPage(
+                            survey: toSurvey(survey),
+                          )),
+                );
               },
-            )));
+              child: Text("Next Step"),
+            )
+          ],
+        ),
+        body: SafeArea(
+            child: FutureBuilder(
+          future: this.assetLoader,
+          builder: (BuildContext context, AsyncSnapshot<List> snapshot) {
+            if (!snapshot.hasData) {
+              return CircularProgressIndicator();
+            }
+            return Column(children: [
+              Text("Choose or edit survey"),
+              DropdownButton<TestJsonType>(
+                value: selected,
+                icon: const Icon(Icons.arrow_downward),
+                elevation: 16,
+                underline: Container(
+                  height: 2,
+                  color: Colors.deepPurpleAccent,
+                ),
+                onChanged: (TestJsonType? value) {
+                  // This is called when the user selects an item.
+                  setState(() {
+                    selected = value;
+                    survey = _surveyMap[selected!]!;
+                  });
+                },
+                items:
+                    _surveyMap.entries.map<DropdownMenuItem<TestJsonType>>((p) {
+                  return DropdownMenuItem<TestJsonType>(
+                      value: p.key,
+                      child: Text(
+                        p.key.buttonName,
+                      ));
+                }).toList(),
+              ),
+              Expanded(
+                  child: JsonEditor.string(
+                jsonString: survey,
+                onValueChanged: (value) {
+                  if (value.toString() !=
+                          JsonElement.fromString(survey).toString() &&
+                      mounted) {
+                    setState(() {
+                      survey = value.toString();
+                      selected = null;
+                    });
+                  }
+                },
+              ))
+            ]);
+          },
+        )));
+  }
+
+  toSurvey(String value) {
+    final j = json.decode(value);
+    return s.surveyFromJson(j);
   }
 }
 
-toSurvey(String value) {
-  final j = json.decode(value);
-  return s.Survey.fromJson(j);
+enum TestJsonType { complex, multiPage, pageOnly }
+
+extension TestJsonTypeExtension on TestJsonType {
+  String get buttonName {
+    switch (this) {
+      case TestJsonType.complex:
+        return 'Complex';
+      case TestJsonType.multiPage:
+        return 'Survey with Multiple Pages';
+      case TestJsonType.pageOnly:
+        return 'Page without Survey';
+    }
+  }
+
+  String get fileLocation {
+    switch (this) {
+      case TestJsonType.complex:
+        return 'assets/complex.json';
+      case TestJsonType.multiPage:
+        return 'assets/multi_page.json';
+      case TestJsonType.pageOnly:
+        return 'assets/page_without_survey.json';
+    }
+  }
 }

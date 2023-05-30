@@ -1,71 +1,95 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_survey_js/generated/l10n.dart';
-import 'package:flutter_survey_js/survey.dart' as s;
+import 'package:flutter_survey_js/ui/custom_scroll_behavior.dart';
+import 'package:flutter_survey_js/ui/reactive/reactive_wrap_form_array.dart';
+import 'package:flutter_survey_js/ui/survey_configuration.dart';
+import 'package:flutter_survey_js_model/flutter_survey_js_model.dart' as s;
 import 'package:flutter_survey_js/ui/form_control.dart';
 import 'package:flutter_survey_js/ui/reactive/reactive_nested_form.dart';
 import 'package:flutter_survey_js/ui/validators.dart';
 import 'package:reactive_forms/reactive_forms.dart';
 
 import 'matrix_dropdown_base.dart';
-import 'question_title.dart';
-import 'survey_element_factory.dart';
 
-final SurveyElementBuilder matrixDynamicBuilder =
-    (context, element, {bool hasTitle = true}) {
+Widget matrixDynamicBuilder(BuildContext context, s.Elementbase element,
+    {ElementConfiguration? configuration}) {
   return MatrixDynamicElement(
     formControlName: element.name!,
-    matrix: element as s.MatrixDynamic,
-  ).wrapQuestionTitle(element, hasTitle: hasTitle);
-};
+    matrix: element as s.Matrixdynamic,
+  ).wrapQuestionTitle(context, element, configuration: configuration);
+}
 
 class MatrixDynamicElement extends StatelessWidget {
   final String formControlName;
-  final s.MatrixDynamic matrix;
-
-  const MatrixDynamicElement(
+  final s.Matrixdynamic matrix;
+  final scrollController = ScrollController();
+  MatrixDynamicElement(
       {Key? key, required this.formControlName, required this.matrix})
       : super(key: key);
 
   @override
   Widget build(BuildContext context) {
-    final createNew = () {
+    createNew({Object? value}) {
       //create new formGroup
-      return elementsToFormGroup((matrix.columns ?? [])
-          .map((column) => matrixDropdownColumnToQuestion(matrix, column))
-          .toList());
-    };
+      return elementsToFormGroup(
+          context,
+          (matrix.columns?.toList() ?? [])
+              .map((column) => matrixDropdownColumnToQuestion(matrix, column))
+              .toList(),
+          value: value);
+    }
 
-    return ReactiveFormArray(
+    return ReactiveWrapFormArray(
+      wrapper:
+          (BuildContext context, FormArray<Object?> formArray, Widget child) {
+        final effectiveDecoration = const InputDecoration()
+            .applyDefaults(Theme.of(context).inputDecorationTheme);
+
+        return InputDecorator(
+          decoration: effectiveDecoration.copyWith(
+              errorText: getErrorTextFromFormControl(context, formArray)),
+          child: child,
+        );
+      },
       formArrayName: formControlName,
       builder: (context, formArray, child) {
+        final formGroups = <FormGroup>[];
+        bool modified = false;
+        for (final c in formArray.controls) {
+          if (c is FormGroup) {
+            formGroups.add(c);
+          } else {
+            formGroups.add(createNew(value: c.value));
+            modified = true;
+          }
+        }
+        if (modified) {
+          formArray.clear();
+          formArray.addAll(formGroups);
+        }
         final controls = formArray.controls.cast<FormGroup>().toList();
-        List<TableRow> _list = <TableRow>[];
-        const actionSize = 70.0;
-        final columnCount = (matrix.columns?.length ?? 0) + 1;
+        List<TableRow> list = <TableRow>[];
 
         /// Add title bar
-        _list.add(TableRow(
-            decoration: BoxDecoration(
+        list.add(TableRow(
+            decoration: const BoxDecoration(
               color: Colors.grey,
             ),
             children: [
-              ...((matrix.columns ?? []).map((e) => TableCell(
+              ...((matrix.columns?.toList() ?? []).map((e) => TableCell(
                     child: MatrixDropdownTitle(e),
                   ))),
-              TableCell(
-                  child: SizedBox(
-                width: actionSize,
-              ))
+              const TableCell(child: SizedBox())
             ]));
         controls.asMap().forEach((i, c) {
-          _list.add(TableRow(
+          list.add(TableRow(
               decoration: i % 2 != 0
-                  ? BoxDecoration(
+                  ? const BoxDecoration(
                       color: Colors.grey,
                     )
                   : null,
               children: [
-                ...(matrix.columns ?? []).map((column) {
+                ...(matrix.columns?.toList() ?? []).map((column) {
                   final q = matrixDropdownColumnToQuestion(matrix, column);
                   final v = questionToValidators(q);
 
@@ -82,24 +106,27 @@ class MatrixDynamicElement extends StatelessWidget {
                             //     [...c.validators, ...v]).toList();
                             //TODO runner
                             c.setValidators(v);
-                            return SurveyElementFactory()
-                                .resolve(context, q, hasTitle: false);
+                            return SurveyConfiguration.of(context)!
+                                .factory
+                                .resolve(
+                                    context, q,
+                                    configuration: const ElementConfiguration(
+                                        hasTitle: false));
                           },
                         ),
                       ));
                 }).toList(),
                 TableCell(
                   child: SizedBox(
-                      width: actionSize,
                       child: Padding(
-                        padding: EdgeInsets.all(5),
-                        child: ElevatedButton(
-                          onPressed: () {
-                            formArray.remove(c);
-                          },
-                          child: Text(S.of(context).remove),
-                        ),
-                      )),
+                    padding: const EdgeInsets.all(5),
+                    child: ElevatedButton(
+                      onPressed: () {
+                        formArray.remove(c);
+                      },
+                      child: Text(S.of(context).remove),
+                    ),
+                  )),
                 )
               ]));
         });
@@ -108,16 +135,23 @@ class MatrixDynamicElement extends StatelessWidget {
             builder: (BuildContext context, BoxConstraints constraints) {
           return Column(
             children: [
-              Table(
-                columnWidths: {columnCount - 1: FixedColumnWidth(actionSize)},
-                border: TableBorder.all(
-                  width: 1.0,
-                ),
-                // columnWidths: map,
-                children: _list,
-              ),
+              ScrollConfiguration(
+                  behavior: CustomScrollBehavior(),
+                  child: Scrollbar(
+                      controller: scrollController,
+                      child: SingleChildScrollView(
+                          controller: scrollController,
+                          scrollDirection: Axis.horizontal,
+                          child: Table(
+                            defaultColumnWidth: const IntrinsicColumnWidth(),
+                            border: TableBorder.all(
+                              width: 1.0,
+                            ),
+                            // columnWidths: map,
+                            children: list,
+                          )))),
               Padding(
-                padding: EdgeInsets.all(5),
+                padding: const EdgeInsets.all(5),
                 child: ElevatedButton(
                   onPressed: () {
                     formArray.add(createNew());

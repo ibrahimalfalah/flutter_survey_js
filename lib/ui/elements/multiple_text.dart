@@ -1,48 +1,61 @@
+import 'package:built_collection/built_collection.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_survey_js/survey.dart' as s;
 import 'package:flutter_survey_js/ui/form_control.dart';
 import 'package:flutter_survey_js/ui/reactive/reactive_nested_form.dart';
+import 'package:flutter_survey_js/ui/survey_configuration.dart';
+import 'package:flutter_survey_js_model/flutter_survey_js_model.dart' as s;
+import 'package:reactive_forms/reactive_forms.dart';
 
-import 'question_title.dart';
-import 'survey_element_factory.dart';
 
-final SurveyElementBuilder multipleTextBuilder =
-    (context, element, {bool hasTitle = true}) {
-  final e = element as s.MultipleText;
-  final texts = (e.items ?? []).map(toText).toList();
+Widget multipleTextBuilder(BuildContext context, s.Elementbase element,
+    {ElementConfiguration? configuration}) {
+  final e = element as s.Multipletext;
+  final texts = (e.items?.toList() ?? []).map(toText).toList();
   return ReactiveNestedForm(
       formControlName: e.name,
       child: ListView.separated(
-        physics: ClampingScrollPhysics(),
+        physics: const ClampingScrollPhysics(),
         shrinkWrap: true,
         itemCount: texts.length,
         itemBuilder: (BuildContext context, int index) {
-          final res = SurveyElementFactory().resolve(context, texts[index]);
-          return res;
+          final res = SurveyConfiguration.of(context)!
+              .factory
+              .resolve(context, texts[index]);
+          return index == 0
+              ? Padding(
+                  padding: const EdgeInsets.only(top: 8.0),
+                  child: res,
+                )
+              : res;
         },
         separatorBuilder: (BuildContext context, int index) {
-          return SurveyElementFactory().separatorBuilder(context);
+          return SurveyConfiguration.of(context)!.separatorBuilder(context);
         },
-      ).wrapQuestionTitle(element, hasTitle: hasTitle));
-};
+      ).wrapQuestionTitle(context, element, configuration: configuration));
+}
 
-final SurveyFormControlBuilder multipleTextControlBuilder =
-    (s.ElementBase element, {validators = const []}) {
-  final e = element as s.MultipleText;
-  final texts = (e.items ?? []).map(toText).toList();
-  final res = elementsToFormGroup(texts, validators: validators);
+AbstractControl multipleTextControlBuilder(
+    BuildContext context, s.Elementbase element,
+    {validators = const [], Object? value}) {
+  final e = element as s.Multipletext;
+  final texts = (e.items?.toList() ?? []).map(toText).toList();
+  final res = elementsToFormGroup(context, texts,
+      validators: validators, value: e.defaultValue?.value ?? value);
   return res;
-};
+}
 
-s.Text toText(s.MultipleTextItem multipleTextItem) {
-  return s.Text()
+s.Text toText(s.Multipletextitem multipleTextItem) {
+  final b = s.Text().toBuilder()
+    ..type = "text"
     ..name = multipleTextItem.name
     ..isRequired = multipleTextItem.isRequired
-    ..validators = multipleTextItem.validators
-    ..inputType = multipleTextItem.inputType
-    ..placeHolder = multipleTextItem.placeHolder
+    ..validators = ListBuilder(multipleTextItem.validators?.toList() ?? [])
+    ..inputType = s.TextInputType.valueOf(multipleTextItem.inputType.toString())
     ..title = multipleTextItem.title
     ..maxLength = multipleTextItem.maxLength
     ..size = multipleTextItem.size
-    ..requiredErrorText = multipleTextItem.requiredErrorText;
+    ..requiredErrorText = multipleTextItem.requiredErrorText
+    ..placeholder = multipleTextItem.placeholder;
+
+  return b.build();
 }
