@@ -17,7 +17,7 @@ class CustomLayoutPage extends StatelessWidget {
     final survey = this.survey;
     return Scaffold(
       appBar: AppBar(
-        title: Text('Survey Customize:' + (survey?.title ?? '')),
+        title: Text('Survey Customize:'),
       ),
       body: SafeArea(
         child: survey == null
