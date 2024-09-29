@@ -9,12 +9,18 @@ class NonEmptyValidator extends Validator<dynamic> {
 
     if (control.value == null) {
       return error;
-    } else if (control.value is String) {
-      return (control.value as String).trim().isEmpty ? error : null;
-    } else if (control.value is List) {
-      return (control.value as List).isEmpty ? error : null;
-    } else if (control.value is Map) {
-      return (control.value as Map).isEmpty ? error : null;
+    }
+
+    if (control.value is String && (control.value as String).trim().isEmpty) {
+      return error;
+    }
+
+    if (control.value is List && (control.value as List).isEmpty) {
+      return error;
+    }
+
+    if (control.value is Map && (control.value as Map).isEmpty) {
+      return error;
     }
 
     return null;
